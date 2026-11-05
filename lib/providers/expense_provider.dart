@@ -67,6 +67,33 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  // Update an existing transaction
+  Future<void> updateExpense(Expense updatedExpense) async {
+    _error = null;
+
+    final index = _expenses.indexWhere(
+      (item) => item.id == updatedExpense.id,
+    );
+
+    if (index == -1) {
+      throw Exception('Transaction not found.');
+    }
+
+    final oldExpense = _expenses[index];
+
+    _expenses[index] = updatedExpense;
+    notifyListeners();
+
+    try {
+      await _storage.saveExpenses(_expenses);
+    } catch (e) {
+      _expenses[index] = oldExpense;
+      _error = 'Unable to update transaction.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   // Delete a transaction
   Future<void> deleteExpense(String id) async {
     final index = _expenses.indexWhere((item) => item.id == id);

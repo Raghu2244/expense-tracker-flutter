@@ -5,10 +5,16 @@ import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  final Expense? expense;
+
+  const AddTransactionScreen({
+    super.key,
+    this.expense,
+  });
 
   @override
-  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
+  State<AddTransactionScreen> createState() =>
+      _AddTransactionScreenState();
 }
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
@@ -35,6 +41,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     'Other',
   ];
 
+  bool get _isEditing => widget.expense != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final expense = widget.expense;
+
+    if (expense != null) {
+      _titleController.text = expense.title;
+      _amountController.text = expense.amount.toString();
+      _isIncome = expense.isIncome;
+      _category = expense.category;
+      _selectedDate = expense.date;
+    }
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -46,7 +69,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(2020),
+      firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
 
@@ -65,7 +88,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     });
 
     final expense = Expense(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: widget.expense?.id ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       title: _titleController.text.trim(),
       amount: double.parse(_amountController.text.trim()),
       category: _category,
@@ -74,13 +98,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
 
     try {
-      await context.read<ExpenseProvider>().addExpense(expense);
+      final provider = context.read<ExpenseProvider>();
+
+      if (_isEditing) {
+        await provider.updateExpense(expense);
+      } else {
+        await provider.addExpense(expense);
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Transaction saved successfully!'),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'Transaction updated successfully!'
+                : 'Transaction saved successfully!',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -90,8 +124,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to save transaction. Try again.'),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'Unable to update transaction.'
+                : 'Unable to save transaction.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -108,9 +146,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Add Transaction',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          _isEditing ? 'Edit Transaction' : 'Add Transaction',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
@@ -122,7 +160,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             children: [
               const Text(
                 'Transaction Type',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -194,9 +235,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                 ),
                 validator: (value) {
-                  final amount = double.tryParse(value ?? '');
+                  final amount = double.tryParse(value?.trim() ?? '');
 
-                  if (amount == null || amount <= 0) {
+                  if (amount == null ||
+                      !amount.isFinite ||
+                      amount <= 0) {
                     return 'Enter a valid amount';
                   }
                   return null;
@@ -212,7 +255,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               const SizedBox(height: 10),
 
               DropdownButtonFormField<String>(
-                initialValue: _category,
+                initialValue: _categories.contains(_category)
+                    ? _category
+                    : 'Other',
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.category),
                   border: OutlineInputBorder(
@@ -236,14 +281,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 20),
 
-              const Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Date',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
 
               OutlinedButton.icon(
                 onPressed: _selectDate,
                 icon: const Icon(Icons.calendar_month),
                 label: Text(
-                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                  '${_selectedDate.day}/'
+                  '${_selectedDate.month}/'
+                  '${_selectedDate.year}',
                 ),
               ),
 
@@ -262,10 +312,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     ),
                   ),
                   child: _isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Save Transaction',
-                          style: TextStyle(
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                      : Text(
+                          _isEditing
+                              ? 'Update Transaction'
+                              : 'Save Transaction',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
