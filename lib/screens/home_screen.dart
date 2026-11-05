@@ -3,9 +3,78 @@ import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
 import 'add_transaction_screen.dart';
+import 'transaction_list_screen.dart';
+import 'analytics_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = const [
+    _HomeDashboard(),
+    TransactionListScreen(),
+    AnalyticsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(index: _selectedIndex, children: _screens),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddTransactionScreen(),
+                  ),
+                );
+              },
+              backgroundColor: const Color(0xFF315CDB),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Transaction'),
+            )
+          : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFE5ECFF),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
+            label: 'Transactions',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'Analytics',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeDashboard extends StatelessWidget {
+  const _HomeDashboard();
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +92,7 @@ class HomeScreen extends StatelessWidget {
           : RefreshIndicator(
               onRefresh: provider.loadExpenses,
               child: ListView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
                 children: [
                   const Text(
                     'Welcome back!',
@@ -40,7 +109,9 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF315CDB),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF172554), Color(0xFF315CDB)],
+                      ),
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Column(
@@ -226,20 +297,6 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-      // Add transaction button
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddTransactionScreen(),
-            ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Transaction'),
-      ),
     );
   }
 
